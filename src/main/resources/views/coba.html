@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapKu Bolo...</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <style>
+        *{
+            box-sizing: border-box;
+        }
+        .custom-div{
+            height: 500px;
+        }
+
+        .weather-info{
+            /* background-image: url("./img/malam.jpg"); */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            /* z-index: 4; */
+        }
+        #zoneName{
+            color: white;
+        }
+        #cuaca_sekarang{
+            font-size: 30px;
+        }
+        .navbar{
+            /* height: 100px; */
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 101;
+            background-color: #3b3a3a;
+            padding-top: 15px;
+            padding-bottom: 15px;
+        }
+        .ngefix{
+            margin-top: 70px;
+            position: relative;
+            z-index: 10;
+        }
+        .lokasi_anda{
+            /* color: white; */
+            font-size: 20px;
+        }
+        .container-fluid{
+            position: relative;
+            background-color: white;
+        }
+        #loading1{
+            /* position: absolute; */
+            /* transform: translateX(-50%); */
+        }
+        @media (min-width: 992px) {
+            .custom-div {
+                height: 100%; /* Ubah tinggi untuk layar besar */
+            }
+            .ngefix{
+                position: fixed; /* Membuat peta menjadi fixed */
+                top: 0; /* Mengatur posisi atas peta */
+                left: 0;/* Mengatur posisi kiri peta */
+                width: 50%; /* Mengatur lebar peta */
+                height: 100%;
+            }
+            .container-fluid{
+                margin-top: 60px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+
+<!-- Modal -->
+<div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="staticBackdropLabel">Panduan Penggunaan</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Mohon untuk memahami panduan penggunaan ringkas berikut :</p>
+                <ol type="1">
+                    <li>Untuk menggunakan fitur lengkapnya, akan ada permintaan izin untuk menakses lokasi perangkat saat halaman website pertama kali dibuka. </li>
+                    <li>Jika anda mengizinkannya, informasi mengenai cuaca dari lokasi perangkat anda akan langsung dimuat.</li>
+                    <li>Anda juga dapat melakukan pencarian cuaca di tempat lain dengan mengeklik koordinat bagian peta</li>
+                    <li>Untuk melakukan zoom in dapat dilakukan dengan drag 2 jari ke bawah.</li>
+                    <li>Untuk melakukan zoom out dapat dilakukan dengan drag 2 jari ke atas.</li>
+                    <li><b>Namun perlu diperhatikan,</b> ketika anda melakukan zoom out maximum akan muncul beberapa dupikasi dari map bumi, dan yang bisa digunakan hanyalah longtitude -180&deg; sampai 180&deg. garis ini ada di perbatasan alaska dan rusia, atau di area sekitar Samudra Pasifik.;</li>
+                    <li>Selain itu anda juga dapat melakukan pencarian cuaca, dengan tab penelusuran yang ada di pojok kanan atas dari peta</li>
+                    <li>Setelah data cuaca didapatkan anda juga dapat melihat data perkiraan cuaca untuk 10 jam ke depannya dengan melakukan scroll ke bawah di bagian cuaca.</li>
+                </ol>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary rounded-5" data-bs-dismiss="modal">Close</button>
+                <!-- <button type="button" class="btn btn-primary">Understood</button> -->
+            </div>
+        </div>
+    </div>
+</div>
+<!-- akhir modal -->
+
+
+<nav class="navbar navbar-light d-flex justify-content-center " >
+    <span class="navbar-brand mb-0 h1 text-light ">Get Weather</span>
+    <button type="button" class="btn btn-warning  rounded-5 " data-bs-toggle="modal" data-bs-target="#staticBackdrop">Panduan Penggunaan</button>
+</nav>
+
+<div class="container-fluid">
+    <div class="row min-vh-100">
+
+        <div class="col-lg p-2 ">
+            <div class=" p-2 h-100 ngefix">
+                <div id="map"  class="custom-div border-box border border-4 border-secondary rounded-2"></div>
+            </div>
+        </div>
+
+        <div class="col-lg mt-3">
+            <div class="d-flex align-items-center  flex-column mb-3 mt-3">
+                <p class="text-center "><span class="lokasi_anda">Lokasi Anda saat ini<br></span><span id="alamat_peta">belum didapatkan</span></p>
+
+                <!-- <img id="loading1" src="./img/loading.gif" alt="..." style="width: 120px; height: 120px;" class="mt-2 mb-3 position-absolute " > -->
+
+                <button id="tombol_load" class="btn btn-primary">Load Weather In Your Location</button>
+            </div>
+
+            <h1>Weather Now</h1>
+            <div class="weather-info bg-body-secondary  p-3 rounded-2 mb-5">
+
+                <div id="" class="d-flex align-items-center flex-column gap-3">
+
+                    <div class="w-100 bg-light rounded-2 px-3 py-3">
+                        <p id="alamat" class="m-0">Alamat </p>
+                    </div>
+
+                    <img id="loading1" src="./img/loading.gif" alt="..." style="width: 120px; height: 120px;" class="loading1 mt-2 mb-3 position-absolute " >
+
+                    <div class="text-center ">
+                        <h1 ><span id="waktu_sekarang"></span> <span id="am_pm" class="fw-light "></span> </h1>
+                        <h4><span id="zoneName" class="fw-light  "></span></h4>
+                    </div>
+
+                    <div class="">
+                        <img id="img_weather" src="./icon/humidity.png" alt="..." style="width: 150px; height: 150px;" class="mt-5 mb-3">
+                    </div>
+
+                    <h5 id="cuaca_se" class="mb-3 fw-light ">Weather now is <span id="cuaca_sekarang" class="fw-bold "></span></h5>
+
+                    <div class="d-flex flex-column  flex-lg-row  gap-3 w-100">
+                        <div class="d-flex bg-light p-2 w-100 rounded-2 ">
+                            <div class="p-2 me-2 d-flex justify-content-center align-items-center">
+                                <img src="./icon/thermometer.png" alt="..." width="30px" height="30px">
+                            </div>
+                            <div class="" style="height: 50px; line-height: 50px;">
+                                <p class="d-inline-block align-middle">Temperature : <span id="suhu"></span></p>
+                            </div>
+                        </div>
+                        <div class="d-flex bg-light  rounded-2 p-2 w-100">
+                            <div class="p-2 me-2 d-flex justify-content-center align-items-center">
+                                <img src="./icon/uv_light.png" alt="..." width="30px" height="30px">
+                            </div>
+                            <div class="" style="height: 50px; line-height: 50px;">
+                                <p  class="d-inline-block align-middle">UV light : <span id="uv_light"></span>    <span id="status_uv"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-column flex-lg-row gap-3 w-100 ">
+                        <div class="d-flex bg-light p-2 w-100 rounded-2 ">
+                            <div class="p-2 me-2 d-flex justify-content-center align-items-center">
+                                <img src="./icon/humidity.png" alt="..." width="30px" height="30px">
+                            </div>
+                            <div class="" style="height: 50px; line-height: 50px;">
+                                <p class="d-inline-block align-middle">Humidity : <span id="kelembaban"></span> RH (Relative)</p>
+                            </div>
+                        </div>
+                        <div class="d-flex bg-light p-2 w-100 rounded-2 ">
+                            <div class="p-2 me-2 d-flex justify-content-center align-items-center">
+                                <img src="./icon/wind_velocity.png" alt="..." width="30px" height="30px">
+                            </div>
+                            <div class="" style="height: 50px; line-height: 50px;">
+                                <p class="d-inline-block align-middle">Wind Velocity : <span id="kecepatan_angin"></span> kph</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                .section-header{
+                    display: block;
+                    margin-top: 20px;
+                    position: relative;
+                    text-align: center;
+                }
+                section{
+                    overflow: hidden;
+                    position: relative;
+                }
+                .Carousel-slider{
+                    position: relative;
+
+                }
+                .carousel{
+                    position: relative;
+                    width: 100%;
+                    height: 550px;
+                    margin-bottom: 30px;
+                }
+                .slider-item {
+                    overflow: auto;
+                    /* line-height: 400px; */
+                    width: 300px;
+                    /* box-shadow: 0 1px 3px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.12); */
+                    display: block;
+                    height: 430px;
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    text-align: center;
+                    cursor: pointer;
+                    /* border: 5px solid #dfdfdf; */
+                    border-radius: 20px;
+                    padding: 10px;
+                    background-color: rgba(255, 255, 255, 0.5);
+
+                    backdrop-filter: blur(2px);
+                    transition: background-color 0.5s ease-in-out;
+                }
+                .slider-item.active{
+                    background-color: rgba(255, 255, 255, 0.8);
+                    backdrop-filter: blur(2px);
+                    transition: background-color 0.5s ease-in-out;
+
+
+                }
+                .slider-item.active .content-wrapper{
+                    color: black;
+                    transition: color 0.5s ease-in-out;
+                }
+                .slider-wrapper{
+                    overflow: hidden;
+                    position: relative;
+                    transform-style: preserve-3d;
+                    transform-origin: 0 50%;
+                    perspective: 1000px;
+                }
+                .indicators {
+                    position: absolute;
+                    top: 15;
+                    left: 50%;
+                    padding: 0;
+                    list-style-type: none;
+                    margin: 40px 40px 0 -77px;
+                    transform: translateX(-50%);
+                    /* display: none; */
+                }
+                .indicators li{
+                    color: #255f98;
+                    float: left;
+                    height: 16px;
+                    margin-right: 8px;
+                    text-align: center;
+                    width: 16px;
+                }
+                .indicators:last-child{
+                    margin: 0;
+                }
+                .indicators a{
+                    background-color: #c2bebe;
+                    border-radius: 20px;
+                    display: inline-block;
+                    height: 16px;
+                    width: 16px;
+                }
+                .indicators .active a {
+                    background: #348ae0;
+                }
+                /* .sub1{
+
+
+                } */
+                .content-wrapper{
+                    padding-top: 10px;
+                    color: white;
+                    transition: color 0.5s ease-in-out;
+                }
+                .content-wrapper img{
+                    margin-bottom: 0px;
+                }
+                .content-wrapper h1{
+                    margin-bottom: -5px;
+                }
+                .content-wrapper h3{
+                    font-weight: 300;
+                    font-size: 25px;
+                }
+                .content-wrapper p{
+                    font-size: 20px;
+                    margin-bottom: 5px;
+                    font-weight: 300;
+                }
+
+
+            </style>
+            <h1>Weather Forecast Next Time, <span id="lokasiForecast"></span> </h1>
+
+            <div  class="weather-info bg-body-secondary  p-3 rounded-2 position-relative ">
+
+                <!-- <img id="loading1" src="./img/loading.gif" alt="..." style="width: 120px; height: 120px;" class="loading1 mt-2 mb-3 position-absolute " > -->
+
+                <div id="carousel-slider">
+
+                    <section>
+                        <div class="carousel">
+                            <div class="slider-item sub1">
+                                <div class="content-wrapper">
+                                    <img id="gambar1" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast1">00</h1>
+                                    <p id="lokasiForecast1">p</p>
+                                    <h3 id="cuacaForecast1">Cuaca :jhkjhk sjdhfkjhsdf skdhjfs </h3>
+                                    <p id="suhuForecast1">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub2">
+                                <div class="content-wrapper">
+                                    <img id="gambar2" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast2">00</h1>
+                                    <p id="lokasiForecast2">p</p>
+                                    <h3 id="cuacaForecast2">Cuaca : </h3>
+                                    <p id="suhuForecast2">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub3">
+                                <div class="content-wrapper">
+                                    <img id="gambar3" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast3">00</h1>
+                                    <p id="lokasiForecast3">p</p>
+                                    <h3 id="cuacaForecast3">Cuaca : </h3>
+                                    <p id="suhuForecast3">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub4">
+                                <div class="content-wrapper">
+                                    <img id="gambar4" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast4">00</h1>
+                                    <p id="lokasiForecast4">p</p>
+                                    <h3 id="cuacaForecast4">Cuaca : </h3>
+                                    <p id="suhuForecast4">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub5">
+                                <div class="content-wrapper">
+                                    <img id="gambar5" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast5">00</h1>
+                                    <p id="lokasiForecast5">p</p>
+                                    <h3 id="cuacaForecast5">Cuaca : </h3>
+                                    <p id="suhuForecast5">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub6">
+                                <div class="content-wrapper">
+                                    <img id="gambar6" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast6">00</h1>
+                                    <p id="lokasiForecast6">p</p>
+                                    <h3 id="cuacaForecast6">Cuaca : </h3>
+                                    <p id="suhuForecast6">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub7">
+                                <div class="content-wrapper">
+                                    <img id="gambar7" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast7">00</h1>
+                                    <p id="lokasiForecast7">p</p>
+                                    <h3 id="cuacaForecast7">Cuaca : </h3>
+                                    <p id="suhuForecast7">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub8">
+                                <div class="content-wrapper">
+                                    <img id="gambar8" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast8">00</h1>
+                                    <p id="lokasiForecast8">p</p>
+                                    <h3 id="cuacaForecast8">Cuaca : </h3>
+                                    <p id="suhuForecast8">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub9">
+                                <div class="content-wrapper">
+                                    <img id="gambar9" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast9">00</h1>
+                                    <p id="lokasiForecast9">p</p>
+                                    <h3 id="cuacaForecast9">Cuaca : </h3>
+                                    <p id="suhuForecast9">Suhu </p>
+                                </div>
+                            </div>
+                            <div class="slider-item sub10">
+                                <div class="content-wrapper">
+                                    <img id="gambar10" src="./icon/64x64/night/116.png" alt="..." style="width: 200px; height: 200px;"/>
+                                    <h1 id="jamForcast10">00</h1>
+                                    <p id="lokasiForecast10">p</p>
+                                    <h3 id="cuacaForecast10">Cuaca : </h3>
+                                    <p id="suhuForecast10">Suhu </p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </section>
+
+                </div>
+
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script src="./src/jquery-3.7.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/micro-slider/dist/micro-slider.min.js"></script>
+
+<script>
+
+
+    // let slideLink = document.querySelectorAll('.slider-item');
+    // if (slideLink && slideLink !== null && slideLink.length > 0){
+    //     slideLink.forEach((element) => {
+    //         // element.style.height = auto;
+    //         // element.style.width = auto;
+    //         // element.style.overflow = auto;
+    //     });
+    // }
+    var CaroSlider;
+    var hammer;
+
+    // untuk carousel slider
+    const Caros = document.querySelector('.carousel');
+    CaroSlider = new MicroSlider(Caros, {
+
+        // indicators: true,
+        // indicatorText: ''
+    });
+    hammer = new Hammer(Caros);
+    const CarosTimer = 2000;
+    let CaroAutoPlay = setInterval(() => CaroSlider.next(), CarosTimer);
+    // clearInterval(CaroAutoPlay);
+    Caros.onmouseenter = function(e){
+        clearInterval(CaroAutoPlay);
+        // console.log(e.type, " mouse detected");
+    }
+    Caros.onmouseleave = function(e){
+        clearInterval(CaroAutoPlay);
+        CaroAutoPlay = setInterval(() => CaroSlider.next(), CarosTimer);
+        // console.log(e.type, " mouse detected");
+    }
+    Caros.onclick = function(e){
+        clearInterval(CaroAutoPlay);
+        // console.log(e.type, " mouse detected");
+    }
+    hammer.on('tap', (e) => {
+        clearInterval(CaroAutoPlay);
+        // console.log(e.type, " mouse detected");
+    })
+    hammer.on('swipe', (e) => {
+        clearInterval(CaroAutoPlay);
+        CaroAutoPlay = setInterval(() => CaroSlider.next(), CarosTimer);
+        // console.log(e.type, " mouse detected");
+    })
+
+
+
+    var map = L.map('map').setView([-6.2088, 106.8456], 13); // Koordinat dan zoom untuk Jakarta
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var latitude;
+    var longtitude;
+    var data_Timezone;
+    var markerYangAda;
+
+    var latSendiri;
+    var longSendiri;
+
+    var address;
+
+    var epochTime;
+    var epochTime_forecast;
+    var intervalID;
+
+    var gifLoading = '<img id="loading1" src="./img/loading.gif" alt="..." style="width: 60px; height: 60px;" class="mt-2 mb-3">';
+
+    function showLoading(){
+        document.querySelector('.loading1').style.zIndex = 5; // Menghapus inline style untuk display
+        // $('#loading1').addClass('d-inline');
+        // console.log($('#loading1'));
+        // $('#alamat_peta').addClass('d-none');
+    }
+
+    function hideLoading(){
+        document.querySelector('#loading1').style.zIndex = -10; // Menghapus inline style untuk display
+        // $('#loading1').removeClass('d-inline');
+        // console.log($('#loading1'));
+        // $('#alamat_peta').removeClass('d-none');
+    }
+
+    // Menangani klik pada peta
+    map.on('click', function(e) {
+        latitude = e.latlng.lat;
+        longtitude = e.latlng.lng;
+        // alert("Latitude: " + latitude + " Longitude: " + lng);
+
+        // Menghapus marker lama jika ada
+        if (markerYangAda) {
+            map.removeLayer(markerYangAda);
+        }
+
+        // Menambahkan marker baru di lokasi yang diklik
+        markerYangAda = L.marker([latitude, longtitude]).addTo(map);
+        markerYangAda.bindPopup(gifLoading).openPopup();
+        showLoading();
+
+
+        (async () => {
+            try {
+                data_Timezone = await getTimeZone(latitude, longtitude);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+
+
+            try {
+                address = await getAddress(latitude, longtitude);
+                $('#alamat').html("Address : "+address);
+                hideLoading();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+
+
+            getWeatherForecast(latitude, longtitude);
+        })();     // lansung dijalankan
+
+    });
+
+
+    function getTimeZone(lat, lng) {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: `/api/timezone`,
+                data:{
+                    lat: lat,
+                    long: lng
+                },
+                type: 'GET',
+                success: function(data) {
+                    // console.log(data);
+                    resolve(data);
+                    // console.log('Local time: ' + data.formatted); // Waktu lokal
+                    // console.log('GMT Offset: ' + data.gmtOffset); // Offset GMT
+                },
+                error: function(error) {
+                    reject(error);
+                }
+            });
+
+        })
+    }
+
+    function getAddress(lat, lng){
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: `/api/alamat`,
+                type: 'GET',
+                data: {
+                    lat: lat,
+                    long: lng
+                },
+                success: function(data) {
+                    address = data.display_name;
+                    markerYangAda.bindPopup("Koordinat: <br><b>Latitude: " + lat + ", <br>Longitude: " + lng + "</b><br>Alamat: " + address).openPopup();
+
+                    resolve(data.display_name);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                    reject(error);
+                }
+            });
+        });
+    }
+
+
+    // Inisialisasi geocoder. load ketika awal masuk atau mencari maps
+    var geocoder = L.Control.geocoder({
+        defaultMarkGeocode: false
+    }).on('markgeocode', async function(e) {
+        var bbox = e.geocode.bbox;
+        var poly = L.polygon([
+            bbox.getSouthEast(),
+            bbox.getNorthEast(),
+            bbox.getNorthWest(),
+            bbox.getSouthWest()
+        ]);
+        map.fitBounds(poly.getBounds());
+
+        if (markerYangAda) {
+            map.removeLayer(markerYangAda);
+        }
+
+        // Menambahkan marker di pusat hasil geocode
+        var center = e.geocode.center;
+        markerYangAda = L.marker(center).addTo(map);
+        markerYangAda.bindPopup(gifLoading).openPopup();
+        markerYangAda.bindPopup("<b>" + e.geocode.name + "</b>").openPopup();
+
+        try {
+            data_Timezone = await getTimeZone(center.lat, center.lng);
+        } catch (error) {
+            console.error('Error:', error);
+        }
+
+        try {
+            address = await getAddress(center.lat, center.lng);
+            $('#alamat').html("Address : "+address);
+            // $('#alamat_peta').html(address);
+        } catch (error) {
+            console.error('Error:', error);
+        }
+
+        getWeatherForecast(center.lat, center.lng);
+
+    }).addTo(map);
+
+    // mengambil location dari pengguna
+    checkGeoPermission();
+    // $(function(){
+    //     getLocation();
+    // });
+
+    // Memeriksa penyimpanan lokal sebelum meminta izin
+    function checkGeoPermission() {
+
+        var geoPermission = localStorage.getItem('geoPermission');
+        if (geoPermission == "granted") {
+            getLocation();
+        }else if (!geoPermission){
+            getLocation();
+        }
+    }
+
+    function getLocation() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(showPosition, showError, {timeout: 10000});
+        } else {
+            alert("Geolocation tidak didukung oleh browser ini.");
+        }
+    }
+
+    function showPosition(position) {
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+        console.log(position.coords);
+
+        latSendiri = latitude;
+        longSendiri = longitude;
+
+        // console.log("latS", latSendiri, "longS", longSendiri, 'longt', longitude);
+
+        // alert("Lokasi anda, Latitude: " + latitude + "\nLongitude: " + longitude);
+        // Anda juga bisa memperbarui peta dengan koordinat ini
+        map.setView([latitude, longitude], 13);
+
+        markerYangAda = L.marker([latitude, longitude]).addTo(map);
+        markerYangAda.bindPopup(gifLoading).openPopup();
+
+        showLoading();
+
+        // menyimpan izin akses di localStorage si browser pengguna
+        localStorage.setItem('geoPermission', 'granted');
+        console.log('izin berhasil disimpan');
+
+        // mengambil alamat
+        (async ()=>{
+            try {
+                address = await getAddress(latitude, longitude);
+                $('#alamat').html("Address : "+address);
+                $('#alamat_peta').html(address);
+                hideLoading();
+                // console.log("oioi"+address);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+
+            try {
+                data_Timezone = await getTimeZone(latitude, longitude);
+                // console.log(data_Timezone);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+
+            // mengambil data forecast 1 jam dari sekarang, masih default putaran pertama
+            getWeatherForecast(latitude, longitude);
+        })();
+    }
+
+    function showError(error) {
+        localStorage.setItem('geoPermission', 'denied'); // Menyimpan status izin
+        console.log('izin gagal disimpan');
+
+    }
+    // akhir mengambil location
+
+    // ajax req
+    function getWeatherForecast(lat, long){
+        $.ajax({
+            url: '/api/weather_api',
+            type: 'GET',
+            data: {
+                lat: lat,
+                long: long
+            },
+            // xhrFields : {
+            //     withCredentials: true
+            // },
+            success: function(data) {
+                if (data.current.condition == undefined){
+                    alert('Maaf, sepertinya terjadi request time out, silakan reload halaman atau mencari alamat lain dahulu.')
+                }
+
+                $('#cuaca_sekarang').html("<b>"+data.current.condition.text+"</b>");
+                $('#suhu').html(data.current.feelslike_c+" &deg; C");
+                let badge;
+                let statusUV;
+                // console.log("uv="+data.current.uv)
+                switch(data.current.uv){
+                    case 0 || 1 || 2:
+                        badge = "success";
+                        statusUV = "Low";
+                        break;
+                    case 3 || 4 || 5:
+                        badge = "info";
+                        statusUV = "Moderate";
+                        break;
+                    case 6 || 7:
+                        badge = "warning";
+                        statusUV = "High";
+                        break;
+                    case 8 || 9 || 10:
+                        badge = "danger";
+                        statusUV = "Very High"
+                        break;
+                }
+                // console.log("bad = "+badge);
+
+                // epochTime = data.location.localtime_epoch;
+                $("#lokasiForecast").html(data.location.name);
+                LoopDetik();
+
+
+                $('#uv_light').html(data.current.uv );
+                // + "<span class='badge text-bg-"+badge+"'>"+getStatusUV+"</span>"
+                $('#status_uv').attr('class', "badge text-bg-"+badge);
+                $('#status_uv').html(statusUV);
+                let urel = data.current.condition.icon;
+                let urel2 = urel.split("weather/").pop();
+                $('#img_weather').attr('src', "./icon/"+urel2);
+                $('#kelembaban').html(data.current.humidity + " %");
+                $('#kecepatan_angin').html(data.current.wind_kph);
+
+                epochTime_forecast = data.forecast.forecastday[0].hour[0].time_epoch;
+
+
+
+
+                // const Carousel = document.querySelector('.carousel');
+                // console.log(data.forecast.forecastday[0].hour);
+                let jamj = new Date(data.location.localtime_epoch * 1000).getHours();
+
+                // Konfigurasi untuk format tanggal
+                const options = { day: '2-digit', month: 'long', year: 'numeric' };
+
+                let j = 0;
+                for (let i = 0; i < 10; i++) {
+
+                    for(let k = 0; k < 24; k++){
+                        if ( jamj < new Date(data.forecast.forecastday[j].hour[k].time_epoch * 1000).getHours()){
+                            $('#gambar'+(i+1)).attr('src', "./icon/"+data.forecast.forecastday[0].hour[i].condition.icon.split("weather/").pop());
+
+                            // console.log("i", i,"j ", j, "jamj = ", jamj, "jamtayang", new Date(data.forecast.forecastday[j].hour[k].time_epoch * 1000).getHours(), "tanggal", data.forecast.forecastday[j].hour[k].time.split(' ')[0]);
+                            // console.log("i = ", i);
+                            // console.log("jamlewat", data.forecast.forecastday[j].hour[k].time.split(' ').pop());
+
+                            let jam = new Date(data.forecast.forecastday[j].hour[k].time_epoch * 1000).getHours();
+
+                            $('#jamForcast'+(i+1)).html(data.forecast.forecastday[j].hour[k].time.split(' ').pop());
+
+                            $('#lokasiForecast'+(i+1)).html(new Intl.DateTimeFormat('en-US', options).format(new Date(data.forecast.forecastday[j].hour[k].time.split(' ')[0])));
+
+                            $('#cuacaForecast'+(i+1)).html("<b>"+data.forecast.forecastday[j].hour[k].condition.text+"</b>");
+
+                            $('#suhuForecast'+(i+1)).html(data.forecast.forecastday[j].hour[k].feelslike_c+" &deg; C");
+
+                            jamj = new Date(data.forecast.forecastday[j].hour[k].time_epoch * 1000).getHours();
+
+                            if (k == 23){
+                                jamj = -1;
+                                j++;
+                            }
+                            break;
+                        }
+
+                    }
+
+                }
+
+                hideLoading();
+
+
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+            }
+        });
+    }
+
+
+
+    async function LoopDetik(){
+        // epochTime =
+
+        // console.log("timez : "+data_Timezone);
+        var zoneName = await data_Timezone.zoneName;
+        var waktuZone = await data_Timezone.formatted;
+        let [jam, menit, detik] = waktuZone.split(' ').pop().split(":");
+
+        jam = parseInt(jam, 10);
+
+        console.log("waktuz", jam);
+
+        if (jam <= 3 || jam >= 19){
+            // malam
+                console.log('malam');
+            $('.weather-info').css('background-image', 'url("./img/malam.jpg")')
+                $('#waktu_sekarang').css('color', 'white');
+                $('#am_pm').css('color', 'white');
+                $('#cuaca_se').css('color', "white");
+        }else if(jam > 3 && jam < 7){
+            // subuh
+            console.log('subuh');
+            $('.weather-info').css('background-image', 'url("./img/subuh.jpg")')
+                $('#waktu_sekarang').css('color', 'white');
+                $('#am_pm').css('color', 'white');
+                $('#cuaca_se').css('color', "white");
+        }else if(jam >= 7 && jam < 10){
+            // pagi
+            console.log('pagi');
+            $('.weather-info').css('background-image', 'url("./img/pagiHari.jpg")')
+                $('#waktu_sekarang').css('color', 'white');
+                $('#am_pm').css('color', 'white');
+                $('#cuaca_se').css('color', "white");
+        }else if(jam >= 10 && jam < 16){
+            // siang
+            console.log('siang');
+            $('.weather-info').css('background-image', 'url("./img/sianghari.jpg")')
+                $('#waktu_sekarang').css('color', 'white');
+                $('#am_pm').css('color', 'white');
+                $('#cuaca_se').css('color', "white");
+        }else if(jam >= 16 && jam < 18){
+            // sore
+            console.log('sore');
+            $('.weather-info').css('background-image', 'url("./img/sore.jpg")')
+                $('#waktu_sekarang').css('color', 'white');
+                $('#am_pm').css('color', 'white');
+                $('#cuaca_se').css('color', "white");
+        }else{
+            console.log('petang');
+            $('.weather-info').css('background-image', 'url("./img/petangkotaMalang.jpg")')
+                $('#waktu_sekarang').css('color', 'white');
+                $('#am_pm').css('color', 'white');
+                $('#cuaca_se').css('color', "white");
+        }
+
+
+
+        if (intervalID){
+            clearInterval(intervalID);
+            // console.log("interval emange ada");
+        }
+
+        epochTime = Math.floor(new Date(data_Timezone.formatted).getTime() / 1000);
+
+        // epochTime_forecast = data.forecast.forecastday[0].hour[0].time_epoch;
+
+        // console.log(epochTime);
+
+        intervalID = setInterval(function(){
+            var date = new Date(epochTime * 1000);
+            var detik = date.getSeconds();
+            var menit = date.getMinutes();
+            var jam = date.getHours();
+            if (jam < 12){
+                $('#waktu_sekarang').html(jam + ":" + menit + ":" + detik );
+                $('#am_pm').html("AM");
+                $('#zoneName').html(" "+zoneName);
+            }else{
+                $('#waktu_sekarang').html(jam + ":" + menit + ":" + detik);
+                $('#am_pm').html("PM");
+                $('#zoneName').html(" "+zoneName);
+            }
+            epochTime++;
+        }, 1000);
+    }
+
+    $('#tombol_load').click( async function(){
+        showLoading();
+
+        if (latSendiri !== undefined){
+            // Menghapus marker lama jika ada
+            if (markerYangAda) {
+                map.removeLayer(markerYangAda);
+            }
+            // console.log("latS", latSendiri, "longS", longSendiri);
+            // Menambahkan marker baru di lokasi yang diklik
+            markerYangAda = L.marker([latSendiri, longSendiri]).addTo(map);
+            markerYangAda.bindPopup(gifLoading).openPopup();
+
+            try {
+                data_Timezone = await getTimeZone(latSendiri, longSendiri);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+
+            try {
+                address = await getAddress(latSendiri, longSendiri);
+                $('#alamat').html("Address : "+address);
+                // $('#alamat_peta').html(address);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+
+            getWeatherForecast(latSendiri, longSendiri);
+
+        }else{
+            checkGeoPermission();
+        }
+
+    });
+
+
+</script>
+</body>
+</html>
+
